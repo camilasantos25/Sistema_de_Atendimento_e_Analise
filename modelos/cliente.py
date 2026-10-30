@@ -1,3 +1,5 @@
+from modelos.validacoes import validar_id, validar_nome
+
 PRIORIDADE_COMUM = 0
 PRIORIDADE_PREFERENCIAL = 1
 PRIORIDADE_URGENTE = 2
@@ -7,14 +9,6 @@ PRIORIDADES_VALIDAS = (
     PRIORIDADE_PREFERENCIAL,
     PRIORIDADE_URGENTE
 )
-
-def validar_id(id_cliente):
-    if id_cliente <= 0:
-        raise ValueError("O ID deve ser maior que zero.")
-
-def validar_nome(nome):
-    if nome.strip() == "":
-        raise ValueError("O nome não pode ficar vazio.")
 
 def validar_telefone(telefone):
     if not telefone.isdigit():
