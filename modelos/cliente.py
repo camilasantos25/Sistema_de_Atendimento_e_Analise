@@ -1,0 +1,39 @@
+PRIORIDADE_COMUM = 0
+PRIORIDADE_PREFERENCIAL = 1
+PRIORIDADE_URGENTE = 2
+
+PRIORIDADES_VALIDAS = (
+    PRIORIDADE_COMUM,
+    PRIORIDADE_PREFERENCIAL,
+    PRIORIDADE_URGENTE
+)
+
+def validar_id(id_cliente):
+    if id_cliente <= 0:
+        raise ValueError("O ID deve ser maior que zero.")
+
+def validar_nome(nome):
+    if nome.strip() == "":
+        raise ValueError("O nome não pode ficar vazio.")
+
+def validar_telefone(telefone):
+    if not telefone.isdigit():
+        raise ValueError("O telefone deve ter apenas números.")
+    if len(telefone) < 10 or len(telefone) > 11:
+        raise ValueError("O telefone deve ter 10 ou 11 dígitos (com DDD).")
+
+def validar_prioridade(prioridade):
+    if prioridade not in PRIORIDADES_VALIDAS:
+        raise ValueError("Prioridade inválida (use 0, 1 ou 2).")
+
+class Cliente:
+    def __init__(self, id_cliente, nome, telefone, prioridade):
+        validar_id(id_cliente)
+        validar_nome(nome)
+        validar_telefone(telefone)
+        validar_prioridade(prioridade)
+
+        self.id = id_cliente
+        self.nome = nome.strip()
+        self.telefone = telefone
+        self.prioridade = prioridade
