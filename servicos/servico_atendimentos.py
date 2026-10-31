@@ -1,6 +1,7 @@
 from datetime import datetime
 from estruturas.fila import Fila
 from estruturas.fila_prioridade import FilaPrioridade
+from estruturas.pilha import Pilha
 from modelos.atendimento import (
     Atendimento,
     ESTADO_AGUARDANDO,
@@ -23,6 +24,7 @@ class ServicoAtendimentos:
         self.abertos_por_cliente = {}
         self.em_andamento_por_atendente = {}
         self.historico = []
+        self.pilha_desfazer = Pilha()
         self.proximo_id = 1
 
     def abrir(self, id_cliente, agora=None):
@@ -76,6 +78,29 @@ class ServicoAtendimentos:
         del self.em_andamento_por_atendente[id_atendente]
         del self.abertos_por_cliente[atendimento.cliente.id]
         self.historico.append(atendimento)
+        self.pilha_desfazer.empilhar(atendimento)
+        return atendimento
+
+    def desfazer_finalizacao(self):
+        if self.pilha_desfazer.esta_vazia():
+            raise ValueError("Não há finalização para desfazer.")
+
+        atendimento = self.pilha_desfazer.topo()
+        atendente = atendimento.atendente
+
+        if atendente.ocupado:
+            raise ValueError("O atendente já está atendendo outro cliente.")
+        if atendimento.cliente.id in self.abertos_por_cliente:
+            raise ValueError("O cliente já tem outro atendimento aberto.")
+
+        self.pilha_desfazer.desempilhar()
+        self.historico.pop()
+
+        atendimento.estado = ESTADO_EM_ANDAMENTO
+        atendimento.hora_fim = None
+        atendente.ocupado = True
+        self.em_andamento_por_atendente[atendente.id] = atendimento
+        self.abertos_por_cliente[atendimento.cliente.id] = atendimento
         return atendimento
 
     def historico_do_cliente(self, id_cliente):
