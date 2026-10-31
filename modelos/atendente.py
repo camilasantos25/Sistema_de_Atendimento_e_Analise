@@ -7,3 +7,4 @@ class Atendente:
 
         self.id = id_atendente
         self.nome = nome.strip()
+        self.ocupado = False
