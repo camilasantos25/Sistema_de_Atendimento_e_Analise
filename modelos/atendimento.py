@@ -11,6 +11,7 @@ class Atendimento:
         self.hora_entrada = hora_entrada
         self.hora_inicio = None
         self.hora_fim = None
+        self.ultima_atividade_anterior = None
 
     def duracao_segundos(self):
         if self.hora_inicio is None or self.hora_fim is None:
