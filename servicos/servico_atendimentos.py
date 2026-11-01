@@ -9,6 +9,9 @@ from modelos.atendimento import (
     ESTADO_FINALIZADO,
 )
 from modelos.cliente import PRIORIDADE_COMUM, PRIORIDADE_URGENTE
+from servicos.registro import obter_logger
+
+LOGGER = obter_logger()
 
 def hora_ou_agora(agora):
     if agora is None:
@@ -45,6 +48,10 @@ class ServicoAtendimentos:
         self.proximo_id = self.proximo_id + 1
         self._colocar_na_fila(atendimento)
         self.abertos_por_cliente[id_cliente] = atendimento
+        LOGGER.info(
+            "Atendimento %s aberto: cliente %s, prioridade %s",
+            atendimento.id, cliente.id, cliente.prioridade,
+        )
         return atendimento
 
     def chamar_proximo(self, id_atendente, agora=None):
@@ -66,6 +73,10 @@ class ServicoAtendimentos:
         atendimento.hora_inicio = hora_ou_agora(agora)
         atendente.ocupado = True
         self.em_andamento_por_atendente[id_atendente] = atendimento
+        LOGGER.info(
+            "Atendimento %s chamado: atendente %s atende o cliente %s",
+            atendimento.id, atendente.id, atendimento.cliente.id,
+        )
         return atendimento
 
     def finalizar(self, id_atendente, agora=None):
@@ -84,6 +95,11 @@ class ServicoAtendimentos:
         del self.abertos_por_cliente[atendimento.cliente.id]
         self.historico.append(atendimento)
         self.pilha_desfazer.empilhar(atendimento)
+        LOGGER.info(
+            "Atendimento %s finalizado: atendente %s, cliente %s, duração %s segundos",
+            atendimento.id, id_atendente, atendimento.cliente.id,
+            atendimento.duracao_segundos(),
+        )
         return atendimento
 
     def desfazer_finalizacao(self):
@@ -110,6 +126,10 @@ class ServicoAtendimentos:
         cliente.ultima_atividade = atendimento.ultima_atividade_anterior
         self.em_andamento_por_atendente[atendente.id] = atendimento
         self.abertos_por_cliente[atendimento.cliente.id] = atendimento
+        LOGGER.info(
+            "Finalização do atendimento %s desfeita: atendente %s voltou a atender o cliente %s",
+            atendimento.id, atendente.id, cliente.id,
+        )
         return atendimento
 
     def historico_do_cliente(self, id_cliente):
@@ -124,7 +144,10 @@ class ServicoAtendimentos:
             raise ValueError("Cliente não encontrado.")
         if id_cliente in self.abertos_por_cliente:
             raise ValueError("O cliente tem atendimento aberto e não pode ser removido.")
-        return self.servico_clientes.remover(id_cliente)
+        
+        cliente = self.servico_clientes.remover(id_cliente)
+        LOGGER.info("Cliente %s removido", id_cliente)
+        return cliente
 
     def remover_clientes_inativos(self, dias, agora=None):
         if dias < 0:
@@ -135,8 +158,13 @@ class ServicoAtendimentos:
         def esta_inativo(cliente):
             sem_atendimento_aberto = cliente.id not in self.abertos_por_cliente
             return sem_atendimento_aberto and cliente.ultima_atividade < limite
-
-        return self.servico_clientes.remover_se(esta_inativo)
+        
+        removidos = self.servico_clientes.remover_se(esta_inativo)
+        LOGGER.info(
+            "Remoção de inativos: %s cliente(s) removido(s) (limite de %s dias)",
+            len(removidos), dias,
+        )
+        return removidos
 
     def restaurar(self, atendimento):
         cliente = atendimento.cliente

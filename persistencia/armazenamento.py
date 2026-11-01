@@ -4,9 +4,12 @@ from datetime import datetime
 from modelos.atendimento import Atendimento, ESTADO_FINALIZADO
 from modelos.cliente import Cliente
 from persistencia.exportacao import gravar_csv, texto_de_data_hora
+from servicos.registro import obter_logger
 from servicos.servico_atendentes import ServicoAtendentes
 from servicos.servico_atendimentos import ServicoAtendimentos
 from servicos.servico_clientes import ServicoClientes
+
+LOGGER = obter_logger()
 
 ARQUIVO_CLIENTES = "clientes.csv"
 ARQUIVO_ATENDENTES = "atendentes.csv"
@@ -72,6 +75,12 @@ def salvar_sistema(pasta, servico_clientes, servico_atendentes, servico_atendime
         linhas_atendimentos,
     )
 
+    LOGGER.info(
+        "Sistema salvo em %s: %s clientes, %s atendentes, %s atendimentos",
+        pasta, servico_clientes.total(), servico_atendentes.total(),
+        len(linhas_atendimentos),
+    )
+
 def data_de_texto(texto):
     if texto == "":
         return None
@@ -87,7 +96,7 @@ def ler_linhas(caminho):
         return []
 
 def processar_arquivo(pasta, nome_arquivo, processar_linha, avisos):
-    numero_linha = 1    # a linha 1 é o cabeçalho
+    numero_linha = 1
     for linha in ler_linhas(os.path.join(pasta, nome_arquivo)):
         numero_linha = numero_linha + 1
         try:
@@ -141,4 +150,12 @@ def carregar_sistema(pasta):
     processar_arquivo(pasta, ARQUIVO_CLIENTES, carregar_cliente, avisos)
     processar_arquivo(pasta, ARQUIVO_ATENDENTES, carregar_atendente, avisos)
     processar_arquivo(pasta, ARQUIVO_ATENDIMENTOS, carregar_atendimento, avisos)
+
+    for aviso in avisos:
+        LOGGER.warning("Aviso ao carregar: %s", aviso)
+    LOGGER.info(
+        "Sistema carregado de %s: %s clientes, %s atendentes, %s avisos",
+        pasta, servico_clientes.total(), servico_atendentes.total(), len(avisos),
+    )
+
     return servico_clientes, servico_atendentes, servico_atendimentos, avisos
