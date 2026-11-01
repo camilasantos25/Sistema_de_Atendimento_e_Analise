@@ -27,6 +27,13 @@ class ServicoAtendimentos:
         self.pilha_desfazer = Pilha()
         self.proximo_id = 1
 
+    def _colocar_na_fila(self, atendimento):
+        cliente = atendimento.cliente
+        if cliente.prioridade == PRIORIDADE_COMUM:
+            self.fila_comum.entrar(atendimento)
+        else:
+            self.fila_prioridade.entrar(atendimento, cliente.prioridade)
+
     def abrir(self, id_cliente, agora=None):
         cliente = self.servico_clientes.buscar(id_cliente)
         if cliente is None:
@@ -36,12 +43,7 @@ class ServicoAtendimentos:
 
         atendimento = Atendimento(self.proximo_id, cliente, hora_ou_agora(agora))
         self.proximo_id = self.proximo_id + 1
-
-        if cliente.prioridade == PRIORIDADE_COMUM:
-            self.fila_comum.entrar(atendimento)
-        else:
-            self.fila_prioridade.entrar(atendimento, cliente.prioridade)
-
+        self._colocar_na_fila(atendimento)
         self.abertos_por_cliente[id_cliente] = atendimento
         return atendimento
 
@@ -135,3 +137,47 @@ class ServicoAtendimentos:
             return sem_atendimento_aberto and cliente.ultima_atividade < limite
 
         return self.servico_clientes.remover_se(esta_inativo)
+
+    def restaurar(self, atendimento):
+        cliente = atendimento.cliente
+        atendente = atendimento.atendente
+        estado = atendimento.estado
+
+        if atendimento.hora_entrada is None:
+            raise ValueError("Atendimento sem hora de entrada.")
+
+        if estado == ESTADO_FINALIZADO:
+            incompleto = (
+                atendente is None
+                or atendimento.hora_inicio is None
+                or atendimento.hora_fim is None
+                or atendimento.ultima_atividade_anterior is None
+            )
+            if incompleto:
+                raise ValueError("Atendimento finalizado incompleto.")
+        elif estado == ESTADO_EM_ANDAMENTO:
+            if atendente is None or atendimento.hora_inicio is None:
+                raise ValueError("Atendimento em andamento incompleto.")
+            if atendente.ocupado:
+                raise ValueError("O atendente já está atendendo outro cliente.")
+            if cliente.id in self.abertos_por_cliente:
+                raise ValueError("O cliente já tem um atendimento aberto.")
+        elif estado == ESTADO_AGUARDANDO:
+            if cliente.id in self.abertos_por_cliente:
+                raise ValueError("O cliente já tem um atendimento aberto.")
+        else:
+            raise ValueError("Estado de atendimento desconhecido: " + str(estado))
+
+        if estado == ESTADO_FINALIZADO:
+            self.historico.append(atendimento)
+            self.pilha_desfazer.empilhar(atendimento)
+        elif estado == ESTADO_EM_ANDAMENTO:
+            atendente.ocupado = True
+            self.em_andamento_por_atendente[atendente.id] = atendimento
+            self.abertos_por_cliente[cliente.id] = atendimento
+        else:
+            self._colocar_na_fila(atendimento)
+            self.abertos_por_cliente[cliente.id] = atendimento
+
+        if atendimento.id >= self.proximo_id:
+            self.proximo_id = atendimento.id + 1
